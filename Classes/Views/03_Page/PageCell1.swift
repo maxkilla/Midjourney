@@ -167,7 +167,7 @@ extension PageCell1 {
 	func actionPhoto(link: String) {
 
 		ProgressHUD.animate(interaction: false)
-		Image.load(link) { [weak self] image, error in
+		Image.load(link) { [weak self] image, error, later in
 			guard let self = self else { return }
 			if let error = error {
 				ProgressHUD.failed(error)

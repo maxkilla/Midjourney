@@ -122,34 +122,6 @@ class Image {
 extension Image {
 
 	//-------------------------------------------------------------------------------------------------------------------------------------------
-	private class func succeed(_ image: UIImage, _ completion: @escaping (UIImage?, Error?) -> Void) {
-
-		DispatchQueue.main.async {
-			completion(image, nil)
-		}
-	}
-
-	//-------------------------------------------------------------------------------------------------------------------------------------------
-	private class func failed(_ text: String, _ completion: @escaping (UIImage?, Error?) -> Void) {
-
-		DispatchQueue.main.async {
-			completion(nil, NSError(text))
-		}
-	}
-
-	//-------------------------------------------------------------------------------------------------------------------------------------------
-	private class func failed(_ error: Error, _ completion: @escaping (UIImage?, Error?) -> Void) {
-
-		DispatchQueue.main.async {
-			completion(nil, error)
-		}
-	}
-}
-
-//-----------------------------------------------------------------------------------------------------------------------------------------------
-extension Image {
-
-	//-------------------------------------------------------------------------------------------------------------------------------------------
 	private class func succeed(_ image: UIImage, _ completion: @escaping (UIImage?, Error?, Bool) -> Void) {
 
 		DispatchQueue.main.async {
@@ -178,17 +150,17 @@ extension Image {
 extension Image {
 
 	//-------------------------------------------------------------------------------------------------------------------------------------------
-	class func load(_ link: String, _ completion: @escaping (UIImage?, Error?) -> Void) {
+	class func load(_ link: String, _ completion: @escaping (UIImage?, Error?, Bool) -> Void) {
 
 		if (link.isEmpty) {
-			failed("Link error.", completion)
+			failed("Link error.", false, completion)
 			return
 		}
 
 		let photoId = link.md5()
 
 		if let image = cache(photoId) {
-			completion(image, nil)
+			completion(image, nil, false)
 			return
 		}
 
@@ -208,29 +180,31 @@ extension Image {
 	}
 
 	//-------------------------------------------------------------------------------------------------------------------------------------------
-	private class func download(_ link: String, _ photoId: String, _ completion: @escaping (UIImage?, Error?) -> Void) {
+	private class func download(_ link: String, _ photoId: String, _ completion: @escaping (UIImage?, Error?, Bool) -> Void) {
 
 		guard let url = URL(string: link) else {
-			failed("Link error.", completion)
+			failed("Link error.", false, completion)
 			return
 		}
 
-		if (Counter.check(photoId)) {
-			failed("Download in progress.", completion)
+		if (Counter.value() > 5) {
+			failed("Too many processes.", true, completion)
+		} else if (Counter.check(photoId)) {
+			failed("Download in progress.", true, completion)
 		} else {
 			Counter.add(photoId)
 			let task = URLSession.shared.dataTask(with: url) { data, response, error in
 				Counter.del(photoId)
 
 				if let error = error {
-					failed(error, completion)
+					failed(error, false, completion)
 				} else {
 					if let data = data, let image = UIImage(data: data) {
 						save(photoId, image)
 						cache(photoId, image)
 						succeed(image, completion)
 					} else {
-						failed("Download error.", completion)
+						failed("Download error.", false, completion)
 					}
 				}
 			}
